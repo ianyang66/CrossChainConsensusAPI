@@ -38,6 +38,13 @@ import it.unisa.dia.gas.jpbc.Element;
 import it.unisa.dia.gas.jpbc.Field;
 import it.unisa.dia.gas.jpbc.Pairing;
 import it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 @Path("/CrossConsensus")
 public class CrossConsensus {
 	public static String get_RelayID;
@@ -45,18 +52,27 @@ public class CrossConsensus {
 	public static Element get_Rai,get_Rbj,get_PKai,get_PKbj,get_PKaibj,get_Taibj;
 	private static final Charset UTF_8 = StandardCharsets.UTF_8;
 	private static final String OUTPUT_FORMAT = "%-20s:%s";
-	static String algorithm = "SHA3-256";
+	static String algorithm = "SHA-256";
     @GET
     @Produces(MediaType.TEXT_PLAIN)
 	public static String result() throws Exception {
-		
+    	try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+//            Class.forName("com.mysql.jdbc.Driver"); // 這個已經不能用了
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("找不到指定的類別");
+        }
+    	//Web3j web3 = Web3j.build(new HttpService("http://140.118.9.225:23001"));
+		//Web3j web31 = Web3j.build(new HttpService("http://140.118.9.226:23001"));
+		//Web3j web32 = Web3j.build(new HttpService("http://140.118.9.227:23001"));
     	long timeCount = StartCountTime();
 		//BasicConfigurator.configure();
 		//ContractTest();
 		/*SetUp Enviroment*/
 		//產生橢圓曲線
 		long timeC1 = StartCountTime();
-		Pairing pairing = initPairing("C:\\go_work\\a.properties");
+		//Pairing pairing = initPairing("C:\\Users\\wealt\\eclipse-workspace\\CCconsensus\\a.properties");
+		Pairing pairing = initPairing("/usr/local/tomcat/webapps/a.properties");
 	    Field G_1 = initG_1(pairing);
 	    StopCountTime("產生橢圓曲線所費時間 : ",timeC1);
 		//產生質數
@@ -122,9 +138,123 @@ public class CrossConsensus {
 	    StopCountTime("一次運行時間 : " ,timeCount);
 	    StopCountTime("跨鏈共識寫入鏈B所費時間 : ",timeC12);
 	    */
-	    return "{{\"Chain\":\"ChildA\", \"message\":\"Consensus Accepted\"},{\"Chain\":\"Relay\", \"message\":\"Consensus Accepted\"},{\"Chain\":\"ChainB\", \"message\":\"Consensus Accepted\"}}";
+	    String Ps=P.toString();
+	    BigInteger Nmod_CTaibj = getCTaibj(); 
+		Element T_aibj = getTaibj();
+		Element R_ai = getRai();
+		Element R_bj = getRbj();
+		Element PK_ai = getPKai();
+		BigInteger H_ai = getHai();
+		BigInteger S_ai = getSai();
+		String RelayID = getRelayID();
+		
+		String NmodCTaibj = Nmod_CTaibj.toString();
+		String Taibj = T_aibj.toString();
+		String Rai = R_ai.toString();
+		String Rbj = R_bj.toString();
+		String PKai = PK_ai.toString();
+		String Hai = H_ai.toString();
+		String Sai = S_ai.toString();
+
+		Element PK_bj = getPKbj();
+		BigInteger H_bj = getHbj();
+		BigInteger S_bj = getSbj();
+
+		
+		String PKbj = PK_bj.toString();
+		String Hbj = H_bj.toString();
+		String Sbj = S_bj.toString();
+		String Info = "RelayID: "+ RelayID +",PKai: "+PKai+",Hai: "+Hai+",Sai: "+Sai+",Nmod_CTaibj: "+NmodCTaibj +", Taibj: "+ T_aibj +", Rai: "+ Rai +",Rbj: "+ Rbj +",PKbj: "+PKbj+",Hai: "+Hbj+",Sbj: "+Sbj;
+		try {
+            Connection conn = DriverManager
+              					.getConnection(
+	              					"jdbc:mysql://127.0.0.1:3306/tran_db?user=root&password=demo2&useUnicode=true&characterEncoding=UTF-8"
+         					   	);
+            
+           
+          	String sql = "insert into tran values(NULL,'"+Info+"','"+Taibj+"')";
+          	PreparedStatement statement= conn.prepareStatement(sql);
+          	System.out.println("Success!");
+          	ResultSet resultSet = statement.executeQuery("Select * From tran where Taibj='"+Taibj+"'");
+          	statement.executeUpdate();
+          	System.out.println("Update Success!");
+          	if(resultSet !=null){
+          		resultSet.close();
+          	}
+          	if(statement !=null){
+          		statement.close();
+          	}
+          	if(conn !=null){
+          		conn.close();
+          	}
+         	
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+    
+		String walletPassword = "";
+		String walletDirectory = "/usr/local/tomcat/webapps/";
+		//String walletDirectory = "C:\\go_work\\Ethereum_1\\nodedata1\\keystore";
+		//String walletDirectory = "C:\\go_work\\Ethereum_1\\";
+		String walletName = "UTC--2022-06-08T07-09-14.151095565Z--5de4abbe713178e6c02ce484d4cff8d14549b7ca";
+		//String walletName = "UTC--2021-05-19T16-00-35.421648900Z--b473ac5dac7e41d941148df22434f8b6b90e9868";
+		Web3j web3 = Web3j.build(new HttpService("http://140.118.9.226:23001"));
+		
+		//Credentials credentials = WalletUtils.loadCredentials("123456", path_to_walletfile);
+		Credentials credentials = WalletUtils.loadCredentials(walletPassword, walletDirectory+"/" + walletName);
+		ContractGasProvider provider = new StaticGasProvider(BigInteger.valueOf(0L), BigInteger.valueOf(672000L));
+		
+		//Method contract = Method.deploy(web3, credentials, provider).send();
+		//String contractAddress = contract.getContractAddress();
+		TransactionManager transactionManager = new org.web3j.tx.RawTransactionManager(web3, credentials, 200, 2000);
+	    //1. 於鏈內部署合約表示提取部分私鑰完成。
+	    //2. 傳送(Sai,Rai)給中繼鏈
+		String contractAddress="";
+		 // Creates a new FileReader, given the name of the file to read from.
+		long time01 = StartCountTime();
+		//FileReader fr = new FileReader("C:\\Users\\wealt\\eclipse-workspace\\CCconsensus\\contractaddr.txt");
+		FileReader fr = new FileReader("/usr/local/tomcat/webapps/contractaddr.txt");
+        // Creates a buffering character-input stream that uses a default-sized input buffer.
+        BufferedReader br = new BufferedReader(fr);
+        while (br.ready()) {
+            contractAddress = br.readLine();
+            System.out.println("Ready... read txt");
+            System.out.println("-------------");
+            System.out.println(contractAddress);
+            System.out.println("-------------");
+        }
+        StopCountTime("read : ",time01);
+		if(contractAddress=="") {
+			long time0 = StartCountTime();
+			//InfoContract contract = InfoContract.deploy(web3,transactionManager, provider).send();
+			Method contract = Method.deploy(web3,transactionManager, provider).sendAsync().get();
+		    contractAddress = contract.getContractAddress();
+		 // Constructs a FileWriter object given a file name.
+		    long timesave = StartCountTime();
+	        //FileWriter fw = new FileWriter("C:\\Users\\wealt\\eclipse-workspace\\CCconsensus\\contractaddr.txt");
+		    FileWriter fw = new FileWriter("/usr/local/tomcat/webapps/contractaddr.txt");
+		    fw.write(contractAddress);
+	        fw.flush();
+	        fw.close();
+		    System.out.println("noono");
+		    StopCountTime("save : ",timesave);
+		    StopCountTime("deploy : ",time0);
+		}
+		System.out.println("Conrtract Address : " + contractAddress);
+		long time1 = StartCountTime();
+		Method contract_use = Method.load(contractAddress, web3, transactionManager, provider);
+		//InfoContract contract_use = InfoContract.load(contractAddress, web3, transactionManager, provider);
+		System.out.println("// Finish : //" + contract_use.setInfo(Info).send());
+		
+	    StopCountTime("load : ",time1);
+	    long time2 = StartCountTime();
+	    String s = contract_use.getInfo().send();
+	    StopCountTime("getInfo : ",time2);
+	    System.out.println("// Final : //" + s);
+	    
+		return "{{\"Chain\":\"ChildA\", \"message\":\"Consensus Accepted\"},{\"Chain\":\"Relay\", \"message\":\"Consensus Accepted\"},{\"Chain\":\"ChainB\", \"message\":\"Consensus Accepted\"}}";
 	}
-	public static void ChildChainA_finish() throws Exception {
+	/*public static void ChildChainA_finish() throws Exception {
 		
 		String walletPassword = "123456";
 		String walletDirectory = "C:\\go_work\\Ethereum_1\\nodedata1\\keystore";
@@ -207,7 +337,7 @@ public class CrossConsensus {
 		
 		String Info = "Child Chain Accept Consensus from Destination! - RelayID: "+ RelayID +",PKbj: "+PKbj+",Hbj: "+Hbj+",Sbj: "+Sbj+",Nmod_CTaibj: "+NmodCTaibj +", Taibj: "+ T_aibj +", Rai: "+ Rai +",Rbj: "+ Rbj;
 		System.out.println("// Finish : //" + contract_use.setInfo(Info).sendAsync().get());
-	}
+	}*/
 
 	/*
 	public static String EnviromentSetUP_And_Deploy(Field G_1,Element P,String H) throws Exception {
@@ -342,7 +472,7 @@ public class CrossConsensus {
 */	
 	public static void ChainA_SetUP_And_Deploy(Element P,Field G1) throws Exception {
 		long timeD4 = StartCountTime();
-		String walletPassword = "123456";
+		/*String walletPassword = "123456";
 		String walletDirectory = "C:\\go_work\\Ethereum_1\\nodedata1\\keystore";
 		String walletName = "UTC--2021-05-19T16-00-35.421648900Z--b473ac5dac7e41d941148df22434f8b6b90e9868";
 		Web3j web3 = Web3j.build(new HttpService("http://127.0.0.1:8549"));
@@ -350,7 +480,7 @@ public class CrossConsensus {
 		ContractGasProvider provider = new StaticGasProvider(BigInteger.valueOf(30000000L), BigInteger.valueOf(6720000L));
 		StopCountTime("Web3連結節點A所費時間 : ",timeD4);
 		TransactionManager transactionManager = new org.web3j.tx.RawTransactionManager(web3, credentials, 20, 2000);
-		
+		*/
 		/*
 		long timeD6 = StartCountTime();
 		String GP = contract_use.getP().send();
@@ -444,7 +574,7 @@ public class CrossConsensus {
 	
 	public static void ChainB_SetUP_And_Deploy(Element P ,Element _PKai,String hash) throws Exception {
 		long timeD16 = StartCountTime();
-		String walletPassword = "123456";
+		/*String walletPassword = "123456";
 		String walletDirectory = "C:\\go_work\\Ethereum_PoA\\node\\keystore";
 		String walletName = "UTC--2021-05-20T06-04-00.812610300Z--15be92c798cf6dbac416b4b707afd2a7e9180022";
 		Web3j web3 = Web3j.build(new HttpService("http://127.0.0.1:8545"));
@@ -454,7 +584,7 @@ public class CrossConsensus {
 		//ContractGasProvider provider = new StaticGasProvider(BigInteger.valueOf(3000000L), BigInteger.valueOf(672000L));
 		ContractGasProvider provider = new StaticGasProvider(BigInteger.valueOf(20000000L), BigInteger.valueOf(4000000L));
 		StopCountTime("Web3連結節點B所費時間 : ",timeD16);
-
+*/
 		
 		//Element P = G1.newRandomElement().getImmutable();
 		//產生公私鑰對 Sbj,Pkbj
@@ -719,6 +849,7 @@ public class CrossConsensus {
 	    System.out.println("系統正在導入橢圓曲線的相關參數……");
 	    //讀參數
 	    Pairing pairing = PairingFactory.getPairing(parameter);
+	    System.out.println(parameter);
 	    System.out.println("系統已經導入完畢");
 	    return pairing;
 	}

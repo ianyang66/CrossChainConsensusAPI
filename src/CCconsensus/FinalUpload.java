@@ -11,14 +11,24 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Random;
 
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.ResponseBuilder;
 
 import org.apache.log4j.BasicConfigurator;
 import org.web3j.crypto.CipherException;
@@ -42,94 +52,237 @@ import it.unisa.dia.gas.plaf.jpbc.pairing.PairingFactory;
 import CCconsensus.CrossConsensus;
 
 
-@Path("/Finalup")
+@Path("/valid")
 public class FinalUpload {
 	public static String get_RelayID;
+	public static String Ps;
+	public static String Info,Info0;
 	public static BigInteger get_Sai,get_Sbj,get_Hai,get_Hbj,get_CTaibj,get_Haibj,get_Xaibj,get_taibj;
 	public static Element get_Rai,get_Rbj,get_PKai,get_PKbj,get_PKaibj,get_Taibj;
 	private static final Charset UTF_8 = StandardCharsets.UTF_8;
 	private static final String OUTPUT_FORMAT = "%-20s:%s";
-	static String algorithm = "SHA3-256";
-    @GET
-    @Produces(MediaType.TEXT_PLAIN)
-	public static String result() throws Exception {
-		
+	public static int pID;
+	static String algorithm = "SHA-256";
+	@GET
+	public Response message(@QueryParam("id") int id) throws Exception {
+		pID = id;
+		try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+//            Class.forName("com.mysql.jdbc.Driver"); // 這個已經不能用了
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("找不到指定的類別");
+        }
+		//Web3j web3 = Web3j.build(new HttpService("http://140.118.9.225:23001"));
+		//Web3j web31 = Web3j.build(new HttpService("http://140.118.9.226:23001"));
+		//Web3j web32 = Web3j.build(new HttpService("http://140.118.9.227:23001"));
+	    try {
+            Connection conn = DriverManager
+              					.getConnection(
+              							"jdbc:mysql://127.0.0.1:3306/tran_db?user=root&password=demo2&useUnicode=true&characterEncoding=UTF-8"
+         					   	);
+            
+            /*Statement stat = conn.createStatement();
+          	int num = stat.executeUpdate("insert into MyGuests (firstname, lastname, email) values ('Chen', 'Tom', 'tom@xxx.com');");
+            ResultSet resultSet = stat.executeQuery("Select * From MyGuests");
+          */
+            System.out.println(pID);
+            String sql = "Select * From tran where id='"+pID+"'";
+            PreparedStatement statement= conn.prepareStatement(sql);
+          	System.out.println("Success!");
+          	ResultSet resultSet = statement.executeQuery();
+          	System.out.println("Select Success!");
+          	
+         	while (resultSet.next()) {
+                String Info0 =  resultSet.getString("Info");
+                String Taibj =  resultSet.getString("Taibj");
+                
 
-    	long timeCount = StartCountTime();
-		//BasicConfigurator.configure();
-		//ContractTest();
-		//SetUp Enviroment
-		//產生橢圓曲線
-		long timeC1 = StartCountTime();
-		Pairing pairing = initPairing("C:\\go_work\\a.properties");
-	    Field G_1 = initG_1(pairing);
-	    StopCountTime("產生橢圓曲線所費時間 : ",timeC1);
-		//產生質數
-	    long timeC2 = StartCountTime();
-	    int Prime = generatePrime(5,100);//隨機產生5~100範圍內的質數值
-	    StopCountTime("產生質數所費時間 : ",timeC2);
-		//產生 Generator P
-	    long timeC3 = StartCountTime();
-	    Element P = G_1.newRandomElement().getImmutable();
-	    StopCountTime("產生Generator P 所費時間 : ",timeC3);
-	    //決定Hash Function SHA3-256 
-	    //String algorithm = "SHA3-256"
-	    
-	    //ContractTest();
+                System.out.println("================================");
+                System.out.println(Info0);                
+                System.out.println("================================");
 
-	    //SetUp_1-1
-	    /*
-	    long timeC4 = StartCountTime();
-	    String SetUp1_Contract = EnviromentSetUP_And_Deploy(G_1,P,algorithm);
-	    StopCountTime("SetUp_1-1所費時間 : ",timeC4);
-	    */
-	    //SetUp_1-2
-	    long timeC5 = StartCountTime();
-	    ChainA_SetUP_And_Deploy(P,G_1);
-	    StopCountTime("SetUp_1-2所費時間 : ",timeC5);
-	    //Relay Validation
-	    long timeC6 = StartCountTime();
-	    boolean validation1 = Relay_validation(getSai(),P,getRai(),getRelayID(),getHai(),getPKai(),
-	    		"// Validate Partial Private Key Extract From Node Ai //");
-	    System.out.println("// 驗證結果1 // " + validation1);
-	    StopCountTime("Relay Validation A所費時間 : ",timeC6);
-	    //SetUp_2-1
-	    long timeC7 = StartCountTime();
-	    ChainB_SetUP_And_Deploy(P,getPKai(),algorithm);
-	    StopCountTime("SetUp_2-1所費時間 : ",timeC7);
-	    //Relay Validation
-	    long timeC8 = StartCountTime();
-	    boolean validation2 = Relay_validation(getSbj(),P,getRbj(),getRelayID(),getHbj(),getPKbj()
-	    		,"// Validate Partial Private Key Extract From Node bj //");
+            }
+         	
+    		if(resultSet !=null){
+          		resultSet.close();
+          	}
+          	if(statement !=null){
+          		statement.close();
+          	}
+          	if(conn !=null){
+          		conn.close();
+          	}
+    		/*String NmodCTaibj = Nmod_CTaibj.toString();
+    		String Taibj = T_aibj.toString();
+    		String Rai = R_ai.toString();
+    		String Rbj = R_bj.toString();
+    		String PKai = PK_ai.toString();
+    		String Hai = H_ai.toString();
+    		String Sai = S_ai.toString();
+
+    		Element PK_bj = getPKbj();
+    		BigInteger H_bj = getHbj();
+    		BigInteger S_bj = getSbj();
+          	long timeC10 = StartCountTime();
+    	    boolean validation3= Child_Chain_validation(P,getCTaibj(),getPKaibj(),getXaibj(),getRai()
+    	    		,getRelayID(),getPKai(),getHai(),getRbj()
+    	    		,getPKbj(),getHbj(),gettaibj(),getHaibj(),getTaibj());
+    	    
+    	    System.out.println("// 驗證結果3 // "+ validation3);
+    	    StopCountTime("Child Chain Validation 所費時間 : ",timeC10);*/
+          	
+          	String walletPassword = "";
+    		String walletDirectory = "/usr/local/tomcat/webapps/";
+    		//String walletDirectory = "C:\\go_work\\Ethereum_1\\nodedata1\\keystore";
+    		String walletName = "UTC--2022-06-08T07-09-14.151095565Z--5de4abbe713178e6c02ce484d4cff8d14549b7ca";
+    		//String walletName = "UTC--2021-05-19T16-00-35.421648900Z--b473ac5dac7e41d941148df22434f8b6b90e9868";
+    		Web3j web3 = Web3j.build(new HttpService("http://140.118.9.226:23001"));
+    		
+    		//Credentials credentials = WalletUtils.loadCredentials("123456", path_to_walletfile);
+    		Credentials credentials = WalletUtils.loadCredentials(walletPassword, walletDirectory+"/" + walletName);
+    		ContractGasProvider provider = new StaticGasProvider(BigInteger.valueOf(0L), BigInteger.valueOf(3000000L));
+    		
+    		//Method contract = Method.deploy(web3, credentials, provider).send();
+    		//String contractAddress = contract.getContractAddress();
+    		TransactionManager transactionManager = new org.web3j.tx.RawTransactionManager(web3, credentials, 80, 2000);
+    	    //1. 於鏈內部署合約表示提取部分私鑰完成。
+    	    //2. 傳送(Sai,Rai)給中繼鏈
+    		String contractAddress="";
+    		 // Creates a new FileReader, given the name of the file to read from.
+    		/*long time01 = StartCountTime();
+    		FileReader fr = new FileReader("C:\\Users\\wealt\\eclipse-workspace\\CCconsensus\\contractaddr.txt");
+            // Creates a buffering character-input stream that uses a default-sized input buffer.
+            BufferedReader br = new BufferedReader(fr);
+            while (br.ready()) {
+                contractAddress = br.readLine();
+                System.out.println("Ready... read txt");
+                System.out.println("-------------");
+                System.out.println(contractAddress);
+                System.out.println("-------------");
+            }
+            StopCountTime("read : ",time01);
+*/
+    		long time0 = StartCountTime();
+    		//Method contract = Method.deploy(web3,transactionManager, provider).sendAsync().get();
+    		long time01 = StartCountTime();
+    		//FileReader fr = new FileReader("C:\\Users\\wealt\\eclipse-workspace\\CCconsensus\\contractaddr.txt");
+    		FileReader fr = new FileReader("/usr/local/tomcat/webapps/contractaddr.txt");
+            // Creates a buffering character-input stream that uses a default-sized input buffer.
+            BufferedReader br = new BufferedReader(fr);
+            while (br.ready()) {
+                contractAddress = br.readLine();
+                System.out.println("Ready... read txt");
+                System.out.println("-------------");
+                System.out.println(contractAddress);
+                System.out.println("-------------");
+            }
+            StopCountTime("read : ",time01);
+    		 // Constructs a FileWriter object given a file name.
+    		StopCountTime("read : ",time0);
+    	  
+    		System.out.println("Conrtract Address : " + contractAddress);
+    		long time1 = StartCountTime();
+    		Method contract_use = Method.load(contractAddress, web3, transactionManager, provider);
+    		String Info = contract_use.getInfo().send().toString();
+    		
+    	    StopCountTime("load : ",time1);
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+	    if(Info==Info0) {
+	    	return Response.status(200).entity("{\"Chain\":\"all\", \"message\":\"Valid Consensus Signature for Transaction!\"}").build();
+	    }else {
+		return Response.status(200).entity("{\"Chain\":\"all\", \"message\":\"Unvalid Consensus Signature for Transaction!\"}").build();}
+	}
+	public static void result() throws Exception {
 	    
-	    System.out.println("// 驗證結果2 // " + validation2);
-	    StopCountTime("Relay Validation B所費時間 : ",timeC8);
-	    //Relay SetUp
-	    long timeC9 = StartCountTime();
-	    Relay_SetUP(P);
-	    StopCountTime("Relay SetUp 所費時間 : ",timeC9);
+    	
+    	Web3j web3 = Web3j.build(new HttpService("http://127.0.0.1:8549"));
+	    try {
+            Connection conn = DriverManager
+              					.getConnection(
+	              					"jdbc:mysql://127.0.0.1:13317/demo2db", // DB 的位置
+              						"root", // 使用者
+          					    	"demo2" // 密碼
+         					   	);
+            
+            /*Statement stat = conn.createStatement();
+          	int num = stat.executeUpdate("insert into MyGuests (firstname, lastname, email) values ('Chen', 'Tom', 'tom@xxx.com');");
+            ResultSet resultSet = stat.executeQuery("Select * From MyGuests");
+          */
+            
+            Statement statement= conn.createStatement();
+          	System.out.println("Success!");
+          	ResultSet resultSet = statement.executeQuery("Select * From tran where id='"+pID+"'");
+          	System.out.println("Select Success!");
+          	
+         	while (resultSet.next()) {
+                int id =  resultSet.getInt("id");
+                Ps =  resultSet.getString("Ps");
+                String NmodCTaibj =  resultSet.getString("NmodCTaibj");
+                String RelayID =  resultSet.getString("RelayID");
+                String Taibj =  resultSet.getString("Taibj");
+                String Rai =  resultSet.getString("Rai");
+                String Rbj =  resultSet.getString("Rbj");
+                String PKai =  resultSet.getString("PKai");
+                String Hai =  resultSet.getString("Hai");
+                String Sai =  resultSet.getString("Sai");
+                String PKbj =  resultSet.getString("PKbj");
+                String Hbj =  resultSet.getString("Hbj");
+                String Sbj =  resultSet.getString("Sbj");
+                
+
+                System.out.println("================================");
+                System.out.println(id);                
+                System.out.println("================================");
+
+            }
+         	
+    		if(resultSet !=null){
+          		resultSet.close();
+          	}
+          	if(statement !=null){
+          		statement.close();
+          	}
+          	if(conn !=null){
+          		conn.close();
+          	}
+    		/*String NmodCTaibj = Nmod_CTaibj.toString();
+    		String Taibj = T_aibj.toString();
+    		String Rai = R_ai.toString();
+    		String Rbj = R_bj.toString();
+    		String PKai = PK_ai.toString();
+    		String Hai = H_ai.toString();
+    		String Sai = S_ai.toString();
+
+    		Element PK_bj = getPKbj();
+    		BigInteger H_bj = getHbj();
+    		BigInteger S_bj = getSbj();
+          	long timeC10 = StartCountTime();
+    	    boolean validation3= Child_Chain_validation(P,getCTaibj(),getPKaibj(),getXaibj(),getRai()
+    	    		,getRelayID(),getPKai(),getHai(),getRbj()
+    	    		,getPKbj(),getHbj(),gettaibj(),getHaibj(),getTaibj());
+    	    
+    	    System.out.println("// 驗證結果3 // "+ validation3);
+    	    StopCountTime("Child Chain Validation 所費時間 : ",timeC10);*/
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
 	    
 	    //Child Chain Validation
-	    long timeC10 = StartCountTime();
-	    boolean validation3= Child_Chain_validation(P,getCTaibj(),getPKaibj(),getXaibj(),getRai()
-	    		,getRelayID(),getPKai(),getHai(),getRbj()
-	    		,getPKbj(),getHbj(),gettaibj(),getHaibj(),getTaibj());
-	    
-	    System.out.println("// 驗證結果3 // "+ validation3);
-	    StopCountTime("Child Chain Validation 所費時間 : ",timeC10);
 	    
 	    
+	    /*
 	    //寫入二鏈
 	    long timeC11 = StartCountTime();
 	    ChildChainA_finish();
 	    StopCountTime("跨鏈共識寫入鏈A所費時間 : ",timeC11);
 	    long timeC12 = StartCountTime();
 	    ChildChainB_finish();
-	    StopCountTime("跨鏈共識寫入鏈B所費時間 : ",timeC12);
-	    return "{\"Chain\":\"all\", \"message\":\"Consensus returned to Child Chain!\"}";
-	}
+	    StopCountTime("跨鏈共識寫入鏈B所費時間 : ",timeC12);*/
+	    }
 	public static void ChildChainA_finish() throws Exception {
-		
+		/*
 		String walletPassword = "123456";
 		String walletDirectory = "C:\\go_work\\Ethereum_1\\nodedata1\\keystore";
 		String walletName = "UTC--2021-05-19T16-00-35.421648900Z--b473ac5dac7e41d941148df22434f8b6b90e9868";
@@ -149,7 +302,7 @@ public class FinalUpload {
 
 		Method contract_use = Method.load(contractAddress, web3, transactionManager, provider);
 		//Method contract_use = Method.load(contractAddress, web3, credentials, provider);
-		
+		*/
 		BigInteger Nmod_CTaibj = getCTaibj(); 
 		Element T_aibj = getTaibj();
 		Element R_ai = getRai();
@@ -168,12 +321,12 @@ public class FinalUpload {
 		String Sai = S_ai.toString();
 		
 		String Info = "Child Chain Accept Consensus from Destination! - RelayID: "+ RelayID +",PKai: "+PKai+",Hai: "+Hai+",Sai: "+Sai+",Nmod_CTaibj: "+NmodCTaibj +", Taibj: "+ T_aibj +", Rai: "+ Rai +",Rbj: "+ Rbj;
-		System.out.println("// Finish : //" + contract_use.setInfo(Info).sendAsync().get());
+		//System.out.println("// Finish : //" + contract_use.setInfo(Info).sendAsync().get());
 		
 		
 	}
 	public static void ChildChainB_finish() throws Exception{
-		String walletPassword = "123456";
+		/*String walletPassword = "123456";
 		String walletDirectory = "C:\\go_work\\Ethereum_PoA\\node\\keystore";
 		String walletName = "UTC--2021-05-20T06-04-00.812610300Z--15be92c798cf6dbac416b4b707afd2a7e9180022";
 		Web3j web3 = Web3j.build(new HttpService("http://127.0.0.1:8545"));
@@ -192,6 +345,7 @@ public class FinalUpload {
 		System.out.println("Conrtract Address : " + contractAddress);
 		MethodX contract_use = MethodX.load(contractAddress, web3, transactionManager, provider);
 		//Method contract_use = Method.load(contractAddress, web3, credentials, provider);
+		 */
 		BigInteger Nmod_CTaibj = getCTaibj(); 
 		Element T_aibj = getTaibj();
 		Element R_ai = getRai();
@@ -210,7 +364,7 @@ public class FinalUpload {
 		String Sbj = S_bj.toString();
 		
 		String Info = "Child Chain Accept Consensus from Destination! - RelayID: "+ RelayID +",PKbj: "+PKbj+",Hbj: "+Hbj+",Sbj: "+Sbj+",Nmod_CTaibj: "+NmodCTaibj +", Taibj: "+ T_aibj +", Rai: "+ Rai +",Rbj: "+ Rbj;
-		System.out.println("// Finish : //" + contract_use.setInfo(Info).sendAsync().get());
+		//System.out.println("// Finish : //" + contract_use.setInfo(Info).sendAsync().get());
 	}
 
 	/*
@@ -344,187 +498,7 @@ public class FinalUpload {
 		return contractAddress;
 	}
 */	
-	public static void ChainA_SetUP_And_Deploy(Element P,Field G1) throws Exception {
-		long timeD4 = StartCountTime();
-		String walletPassword = "123456";
-		String walletDirectory = "C:\\go_work\\Ethereum_1\\nodedata1\\keystore";
-		String walletName = "UTC--2021-05-19T16-00-35.421648900Z--b473ac5dac7e41d941148df22434f8b6b90e9868";
-		Web3j web3 = Web3j.build(new HttpService("http://127.0.0.1:8549"));
-		Credentials credentials = WalletUtils.loadCredentials(walletPassword, walletDirectory+"/" + walletName);
-		ContractGasProvider provider = new StaticGasProvider(BigInteger.valueOf(30000000L), BigInteger.valueOf(6720000L));
-		StopCountTime("Web3連結節點A所費時間 : ",timeD4);
-		TransactionManager transactionManager = new org.web3j.tx.RawTransactionManager(web3, credentials, 20, 2000);
-		
-		/*
-		long timeD6 = StartCountTime();
-		String GP = contract_use.getP().send();
-		StopCountTime("節點A從合約加載Generator P所費時間 : ",timeD6);
-		*/
-		
-		//產生公私鑰對 Sai,Pkai
-		long timeD7 = StartCountTime();
-        Random random = new Random();
-	    BigInteger Sai = new BigInteger(160, 160,random);
-	    StopCountTime("節點A產生私鑰Sai所費時間 : ",timeD7);
-	    System.out.println("Sai : " + Sai);
-	    
-	    long timeD8 = StartCountTime();
-	    Element PKai = P.duplicate().mul(Sai);
-	    StopCountTime("節點A產生公鑰PKai所費時間 : ",timeD8);
-	    
-	    System.out.println("// Node Ai生成公鑰 //" + PKai.toString());
-	    System.out.println("// Node Ai生成私鑰 //" + Sai.toString());
-	    
-	    //ChainId = 8888
-	    String RelayChain_ID = "8888";
-	    //產生小rai
-	    long timeD9 = StartCountTime();
-	    Random random_rai = new Random();
-	    BigInteger rai = new BigInteger(160, 160,random_rai);
-	    StopCountTime("節點A產生Random number 所費時間 : ",timeD9);
-	    
-	    //產生大Rai
-	    long timeD10 = StartCountTime();
-	    Element Rai = P.duplicate().mul(rai);
-	    StopCountTime("節點A產生Rai 所費時間 : ",timeD10);
-	    
-	    //產生hai
-	    long timeD11 = StartCountTime();
-	    String hai_pre = (RelayChain_ID +Rai.toString()+PKai.toString());
-	    StopCountTime("節點A產生Hash hai 所費時間 : ",timeD11);
-	    
-	    //hai值如下
-	    long timeD12 = StartCountTime();
-	    byte[] hai = digest(hai_pre.getBytes(UTF_8), algorithm);
-	    System.out.println("Hash ai"+String.format(OUTPUT_FORMAT, algorithm + " (hex) ", bytesToHex(hai)));
-	    int[] int_hai = bytearray2intarray(hai);
-	    BigInteger BI_hai = new BigInteger(intArrayToArrayString(int_hai));
-	    StopCountTime("節點A將Hai轉成BigInteger所費時間 : ",timeD12);
-	    
-	    System.out.println("// BigInteger Hashai // : " + BI_hai);
-	    //產生sai (PartialPrivateKeyExtract)
-	    long timeD13 = StartCountTime();
-	    BigInteger BI_saiX = rai.multiply(BigInteger.valueOf(Integer.valueOf(RelayChain_ID)));
-	    BigInteger BI_saiY = BI_hai.multiply(Sai);
-	    BigInteger NMod_Sai = BI_saiX.add(BI_saiY);
-	    StopCountTime("節點A計算部分私鑰 : ",timeD13);
-	    
-	    System.out.println("// Partial Private Key Extract // : " + NMod_Sai);
-	    setSai(NMod_Sai); setRai(Rai);setHai(BI_hai);setPKai(PKai);setRelayID(RelayChain_ID);
-	    //1. 於鏈內部署合約表示提取部分私鑰完成。
-	    //2. 傳送(Sai,Rai)給中繼鏈
-	    /*long timeD14 = StartCountTime();
-	    Method contract = Method.deploy(web3, transactionManager, provider).send();
-	    //Method contract = Method.deploy(web3, credentials, provider).send();
-		String contractAddress_PPKeyExtract_Address = contract.getContractAddress();
-		System.out.println("Conrtract PPKeyExtract Address : " + contractAddress_PPKeyExtract_Address);
-		StopCountTime("節點Ai部署合約所費時間 : ",timeD14);
-		
-	    
-		long timeD15 = StartCountTime();
-	    //Method contract_PPKeyExtract = Method.load(contractAddress_PPKeyExtract_Address, web3, credentials, provider);
-		Method contract_PPKeyExtract = Method.load(contractAddress_PPKeyExtract_Address, web3, transactionManager, provider);
-	    */
-	    /*
-	    long timeD1 =StartCountTime();
-		Method contract = Method.deploy(web3, transactionManager, provider).sendAsync().get();
-		//Method contract = Method.deploy(web3, credentials, provider).send();
-		StopCountTime("鏈A將計算完的SetUp資料部屬至鏈中所花時間: ",timeD1);
-		String contractAddress_PPKeyExtract_Address = contract.getContractAddress();
-		System.out.println("Conrtract PPKeyExtract Address : " + contractAddress_PPKeyExtract_Address);
-		long timeD15 = StartCountTime();
-		Method contract_PPKeyExtract = Method.load(contractAddress_PPKeyExtract_Address, web3, transactionManager, provider);
-		//Method contract_use = Method.load(contractAddress, web3, credentials, provider);
-	    
-		System.out.println("// 寫入 : // " +contract_PPKeyExtract.setInfo("NodeAi Partial Private Key Extract Finish").send());
-	    //System.out.println("// 讀取 : // " +contract_PPKeyExtract.getInfo().send());
-	    StopCountTime("節點Ai加載部署合約，紀錄提取私鑰結束於區塊鏈當中所費時間 : ",timeD15);
-	    
-
-	    //System.out.println("/////SetSai" + getSai());
-		//回傳新部署的合約
-		return contractAddress_PPKeyExtract_Address;*/
-	}
 	
-	public static void ChainB_SetUP_And_Deploy(Element P ,Element _PKai,String hash) throws Exception {
-		long timeD16 = StartCountTime();
-		String walletPassword = "123456";
-		String walletDirectory = "C:\\go_work\\Ethereum_PoA\\node\\keystore";
-		String walletName = "UTC--2021-05-20T06-04-00.812610300Z--15be92c798cf6dbac416b4b707afd2a7e9180022";
-		Web3j web3 = Web3j.build(new HttpService("http://127.0.0.1:8545"));
-		//Credentials credentials = WalletUtils.loadCredentials("123456", path_to_walletfile);
-		Credentials credentials = WalletUtils.loadCredentials(walletPassword, walletDirectory+"/" + walletName);
-		System.out.println(" credentials  " + credentials);
-		//ContractGasProvider provider = new StaticGasProvider(BigInteger.valueOf(3000000L), BigInteger.valueOf(672000L));
-		ContractGasProvider provider = new StaticGasProvider(BigInteger.valueOf(20000000L), BigInteger.valueOf(4000000L));
-		StopCountTime("Web3連結節點B所費時間 : ",timeD16);
-
-		
-		//Element P = G1.newRandomElement().getImmutable();
-		//產生公私鑰對 Sbj,Pkbj
-		long timeD17 = StartCountTime();
-        Random randomB = new Random();
-	    BigInteger Sbj = new BigInteger(160, 160,randomB);
-	    StopCountTime("節點B產生私鑰Sbj所費時間 : ",timeD17);
-	    
-	    long timeD18 = StartCountTime();
-	    Element PKbj = P.duplicate().mul(Sbj);
-	    StopCountTime("節點B產生公鑰PKbj所費時間 : ",timeD18);
-	    
-	    //產生Random Number rai
-	    long timeD19 = StartCountTime();
-	    Random random_rbj = new Random();
-	    BigInteger rbj = new BigInteger(160, 160,random_rbj);
-	    StopCountTime("節點B產生Random number 所費時間 : ",timeD19);
-	    
-	    //產生大Rbj
-	    long timeD20 = StartCountTime();
-	    Element Rbj = P.duplicate().mul(rbj);
-	    StopCountTime("節點B產生Rbj 所費時間 : ",timeD20);
-	    
-	    String RelayChain_ID = "8888";
-	    String hbj_pre = (RelayChain_ID+Rbj.duplicate().toString()+_PKai.toString()+PKbj.toString());
-	    
-	    //hbj值如下
-	    long timeD21 = StartCountTime();
-	    byte[] hbj = digest(hbj_pre.getBytes(UTF_8), algorithm);
-	    System.out.println(String.format(OUTPUT_FORMAT, algorithm + " (hex) ", bytesToHex(hbj)));
-	    StopCountTime("節點B產生Hash Hbj 所費時間 : ",timeD21);
-	    
-	    long timeD22 = StartCountTime();
-	    int[] int_hbj = bytearray2intarray(hbj);
-	    BigInteger BI_hbj = new BigInteger(intArrayToArrayString(int_hbj));
-	    StopCountTime("將Hbj轉成BigInteger 所費時間 : ",timeD22);
-	    
-	    //產生sbj (PartialPrivateKeyExtract)
-	    long timeD23 = StartCountTime();
-	    BigInteger BI_sbjX = rbj.multiply(BigInteger.valueOf(Integer.valueOf(RelayChain_ID)));
-	    BigInteger BI_sbjY = BI_hbj.multiply(Sbj);
-	    BigInteger NMod_Sbj = BI_sbjX.add(BI_sbjY);
-	    System.out.println("// Partial Private Key Extract // : " + NMod_Sbj);
-	    StopCountTime("產生部分私鑰 sbj 所費時間 : ",timeD23);
-
-		
-	    //BigInteger BI_sbj = (BI_sbjX.add(BI_sbjY)).mod(BigInteger.valueOf(Prime));
-	    
-	    setSbj(NMod_Sbj); setRbj(Rbj);setHbj(BI_hbj);setPKbj(PKbj);
-	    /*
-	    TransactionManager transactionManager = new org.web3j.tx.RawTransactionManager(web3, credentials, 80, 2000);
-	    //1. 於鏈內部署合約表示提取部分私鑰完成。
-	    //2. 傳送(Sai,Rai)給中繼鏈
-	    long timeD24 = StartCountTime();
-	    //MethodX contract = MethodX.deploy(web3, credentials, provider).send();
-	    MethodX contract = MethodX.deploy(web3,transactionManager, provider).send();
-		String contractAddress_PPKeyExtract_Address = contract.getContractAddress();
-		System.out.println("Conrtract PPKeyExtract Address : " + contractAddress_PPKeyExtract_Address);
-		MethodX contract_PPKeyExtract = MethodX.load(contractAddress_PPKeyExtract_Address, web3, transactionManager, provider);
-	    //MethodX contract_PPKeyExtract = MethodX.load(contractAddress_PPKeyExtract_Address, web3, credentials, provider);
-	    System.out.println("// 寫入 : // " +contract_PPKeyExtract.setInfo("Nodebj Partial Private Key Extract Finish").send());
-	    //System.out.println("// 讀取 : // " +contract_PPKeyExtract.getInfo().send());
-	    StopCountTime("節點Bj加載部署合約，紀錄提取私鑰結束於區塊鏈當中所費時間: ",timeD24);
-
-	    return contractAddress_PPKeyExtract_Address;*/
-	}
 	public static void Relay_SetUP(Element P) {
 	    BigInteger hai = getHai();
 	    BigInteger hbj = getHbj();
@@ -752,7 +726,6 @@ public class FinalUpload {
 	    return P_t;
 	}
 
-     
     public static void setPKai(Element PKai) {
 		get_PKai = PKai;
 	}
